@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
+	"strings"
 )
 
 type server struct {
@@ -26,11 +28,11 @@ func (s *server) run() {
 			case CMD_JOIN:
 				s.join(cmd.client, cmd.args)
 			case CMD_ROOMS:
-				s.listRooms(cmd.client, cmd.args)
+				s.listRooms(cmd.client)
 			case CMD_MSG:
 				s.msg(cmd.client, cmd.args)
 			case CMD_QUIT:
-				s.quit(cmd.client, cmd.args)
+				s.quit(cmd.client)
 			default:
 				log.Printf("unknown command: %v", cmd)
 			}
@@ -67,13 +69,32 @@ func (s *server) join(c *client, args []string) {
 	s.quitCurrentRoom(c)
 	c.room = r
 	r.broadcast(c, fmt.Sprintf("%s has joined the room", c.username))
+	c.msg(fmt.Sprintf("welcome to %s", r.name))
 }
 
-func (s *server) listRooms(c *client, args []string) {}
+func (s *server) listRooms(c *client) {
+	var rooms []string
+	for name := range s.rooms {
+		rooms = append(rooms, name)
+	}
+	c.msg(fmt.Sprintf("Available rooms: %s", strings.Join(rooms, ", ")))
+}
 
-func (s *server) msg(c *client, args []string) {}
+func (s *server) msg(c *client, args []string) {
+	if c.room == nil {
+		c.err(errors.New("you must join the room first"))
+		return
+	}
+	c.room.broadcast(c, c.username + ": " + strings.Join(args[1:], " "))
+}
 
-func (s *server) quit(c *client, args []string) {}
+func (s *server) quit(c *client) {
+	log.Printf("Client has disconnected: %s", c.conn.RemoteAddr().String())
+	s.quitCurrentRoom(c)
+
+	c.msg("see you later!")
+	c.conn.Close()
+}
 
 func (s *server) quitCurrentRoom(c *client) {
 	if c.room != nil {
