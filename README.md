@@ -1,6 +1,6 @@
 # TCP-ChatGo
 
-Simple TCP Chat using go
+Simple TCP Chat using go based on a tutorial, this project was developed to learn and practice Golang
 
 ## Commands
 
